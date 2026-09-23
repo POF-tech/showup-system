@@ -7,8 +7,14 @@ const router = express.Router();
 router.use(requireAuth);
 
 router.post('/save', async (req, res, next) => {
-  const { name, data } = req.body || {};
-  if (typeof name !== 'string' || !Array.isArray(data)) return res.status(400).json({ success: false, error: 'Missing required fields' });
+  let body = req.body;
+  if (typeof body === 'string') {
+    try { body = JSON.parse(body); } catch { body = {}; }
+  }
+  const { name, data } = body || {};
+  if (typeof name !== 'string' || !name.trim() || !Array.isArray(data) || data.length === 0) {
+    return res.status(400).json({ success: false, error: 'Calendar name and at least one calendar post are required', requestId: req.requestId });
+  }
   try {
     const calendar = { userId: new ObjectId(req.auth.sub), name, data, createdAt: new Date() };
     const result = await (await getDb()).collection('calendars').insertOne(calendar);
