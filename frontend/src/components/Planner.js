@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { api } from '../api';
 import { useAuth } from '../context/AuthContext';
 
@@ -10,7 +10,8 @@ const fallbackRows = () => samplePosts.map((topic, index) => ({ day: index + 1, 
 function promptFor(stage, form, questions = []) { return `Return valid JSON only for a ${stage} in a 30-day search-led content calendar. Business: ${JSON.stringify(form)}. Selected questions: ${JSON.stringify(questions)}. For questions return {"questions":[{"question":"...","source":"Google People Also Ask"}]}; for pillars return {"pillars":[{"name":"...","description":"..."}]}; for calendar return {"posts":[{"day":1,"platform":"Instagram","type":"Reel","topic":"...","cta":"...","pillar":"...","search":"..."}]}. Generate concise useful content.`; }
 
 export default function Planner() {
-  const { token } = useAuth(); const [step, setStep] = useState(1); const [form, setForm] = useState(defaults); const [questions, setQuestions] = useState([]); const [pillars, setPillars] = useState([]); const [posts, setPosts] = useState([]); const [saved, setSaved] = useState([]); const [error, setError] = useState(''); const [busy, setBusy] = useState(false);
+  const { token } = useAuth(); const [step, setStep] = useState(1); const [form, setForm] = useState(defaults); const [questions, setQuestions] = useState([]); const [pillars, setPillars] = useState([]); const [posts, setPosts] = useState([]); const [saved, setSaved] = useState([]); const [error, setError] = useState(''); const [busy, setBusy] = useState(false); const wasCalendar = useRef(false);
+  useEffect(() => { if (step === 5) wasCalendar.current = true; if (step === 1 && wasCalendar.current) { setForm({ ...defaults, platforms: [...defaults.platforms] }); setQuestions([]); setPillars([]); setPosts([]); setError(''); setBusy(false); wasCalendar.current = false; window.scrollTo({ top: 0, behavior: 'smooth' }); } }, [step]);
   const update = (key, value) => setForm({ ...form, [key]: value });
   const generate = async (stage) => { setBusy(true); setError(''); try { const prompt = promptFor(stage, form, questions); if (!prompt.trim()) throw new Error('Unable to build the generation prompt from the current form.'); const result = await api.generate(token, { stage, prompt, max_tokens: stage === 'calendar' ? 3000 : 1600 }); if (stage === 'questions') { setQuestions(result.questions || []); setStep(3); } if (stage === 'pillars') { setPillars(result.pillars || []); setStep(4); } if (stage === 'calendar') { setPosts(result.posts || []); setStep(5); } } catch (err) { setError(err.message); } finally { setBusy(false); } };
   const loadSaved = async () => { try { const result = await api.calendars(token); setSaved(result.calendars || []); } catch (err) { setError(err.message); } };
