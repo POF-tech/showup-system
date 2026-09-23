@@ -26,14 +26,21 @@ router.post('/', requireAuth, async (req, res, next) => {
     if (process.env.NODE_ENV !== 'production') response.debug = { contentType: req.get('content-type') || null, bodyType: typeof req.body, bodyKeys: Object.keys(body) };
     return res.status(400).json(response);
   }
+  let phase = 'database.connect';
   try {
     const db = await getDb();
+    phase = 'database.user_lookup';
     const user = await db.collection('users').findOne({ _id: new ObjectId(req.auth.sub) });
     if (!user) return res.status(401).json({ success: false, error: 'User not found' });
     if (user.plan === 'free' && user.usageCount >= 25) return res.status(403).json({ success: false, error: 'Upgrade required to continue' });
+    phase = 'ai.generate';
     const result = await generateJson(prompt, body.max_tokens || 1500);
+    phase = 'database.usage_update';
     await db.collection('users').updateOne({ _id: user._id }, { $inc: { usageCount: 1 } });
     return res.json(result);
-  } catch (error) { next(error); }
+  } catch (error) {
+    logger.error('generate.request.failure', { requestId: req.requestId, phase, errorName: error.name, errorMessage: error.message, statusCode: error.statusCode || 500 });
+    next(error);
+  }
 });
 module.exports = router;
