@@ -10,6 +10,39 @@ class AiProviderError extends Error {
   }
 }
 
+function extractJsonValue(text) {
+  const source = String(text || '').replace(/^\uFEFF/, '').trim();
+  for (let start = 0; start < source.length; start += 1) {
+    if (source[start] !== '{' && source[start] !== '[') continue;
+    const stack = [];
+    let inString = false;
+    let escaped = false;
+    for (let index = start; index < source.length; index += 1) {
+      const character = source[index];
+      if (inString) {
+        if (escaped) escaped = false;
+        else if (character === '\\') escaped = true;
+        else if (character === '"') inString = false;
+        continue;
+      }
+      if (character === '"') {
+        inString = true;
+        continue;
+      }
+      if (character === '{' || character === '[') stack.push(character);
+      else if (character === '}' || character === ']') {
+        const expected = character === '}' ? '{' : '[';
+        if (stack.pop() !== expected) break;
+        if (stack.length === 0) {
+          const candidate = source.slice(start, index + 1);
+          try { return JSON.parse(candidate); } catch { break; }
+        }
+      }
+    }
+  }
+  throw new SyntaxError('No complete JSON object or array found in AI response');
+}
+
 async function generateJson(prompt, maxTokens = 1500) {
   if (config.isPlaceholder(config.anthropicApiKey)) {
     throw new AiProviderError('AI service is not configured. Set ANTHROPIC_API_KEY in server/.env.', 503);
@@ -44,8 +77,8 @@ async function generateJson(prompt, maxTokens = 1500) {
   }
   const text = Array.isArray(data.content) ? data.content.map((item) => item.text || '').join('') : '';
   try {
-    const result = JSON.parse(text.replace(/```json\n?/g, '').replace(/```/g, '').trim());
-    logger.info('ai.generate.success', { model: config.anthropicModel, durationMs: Date.now() - startedAt });
+    const result = extractJsonValue(text);
+    logger.info('ai.generate.success', { model: config.anthropicModel, responseLength: text.length, durationMs: Date.now() - startedAt });
     return result;
   } catch (error) {
     logger.error('ai.generate.invalid_json', { durationMs: Date.now() - startedAt, err: error });
@@ -53,4 +86,4 @@ async function generateJson(prompt, maxTokens = 1500) {
   }
 }
 
-module.exports = { generateJson, AiProviderError };
+module.exports = { generateJson, AiProviderError, extractJsonValue };
