@@ -15,17 +15,26 @@ async function generateJson(prompt, maxTokens = 1500) {
     throw new AiProviderError('AI service is not configured. Set ANTHROPIC_API_KEY in server/.env.', 503);
   }
   const startedAt = Date.now();
-  logger.info('ai.generate.start', { model: config.anthropicModel, maxTokens });
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      'x-api-key': config.anthropicApiKey,
-      'anthropic-version': '2023-06-01'
-    },
-    signal: AbortSignal.timeout(30000),
-    body: JSON.stringify({ model: config.anthropicModel, max_tokens: maxTokens, messages: [{ role: 'user', content: [{ type: 'text', text: prompt }] }] })
-  });
+  logger.info('ai.generate.start', { model: config.anthropicModel, maxTokens, timeoutMs: config.aiTimeoutMs });
+  let response;
+  try {
+    response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-api-key': config.anthropicApiKey,
+        'anthropic-version': '2023-06-01'
+      },
+      signal: AbortSignal.timeout(config.aiTimeoutMs),
+      body: JSON.stringify({ model: config.anthropicModel, max_tokens: maxTokens, messages: [{ role: 'user', content: [{ type: 'text', text: prompt }] }] })
+    });
+  } catch (error) {
+    if (error.name === 'TimeoutError' || error.name === 'AbortError') {
+      logger.error('ai.generate.timeout', { model: config.anthropicModel, timeoutMs: config.aiTimeoutMs, durationMs: Date.now() - startedAt });
+      throw new AiProviderError(`AI provider timed out after ${config.aiTimeoutMs}ms.`, 504);
+    }
+    throw error;
+  }
   const data = await response.json();
   if (!response.ok) {
     const providerRequestId = response.headers.get('request-id') || response.headers.get('x-request-id') || undefined;

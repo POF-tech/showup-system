@@ -43,7 +43,11 @@ app.use('/', generateRoutes);
 app.use((req, res) => res.status(404).json({ success: false, error: 'Endpoint not found', requestId: req.requestId }));
 app.use((error, req, res, next) => {
   logger.error('http.request.failure', { requestId: req.requestId, method: req.method, path: req.path, err: error });
-  res.status(500).json({ success: false, error: 'Server error', requestId: req.requestId });
+  const statusCode = Number.isInteger(error.statusCode) ? error.statusCode : 500;
+  const safeMessage = statusCode >= 500 && statusCode < 600 && process.env.NODE_ENV === 'production'
+    ? (error.statusCode ? error.message : 'Server error')
+    : (error.message || 'Server error');
+  res.status(statusCode).json({ success: false, error: safeMessage, requestId: req.requestId, ...(error.providerRequestId ? { providerRequestId: error.providerRequestId } : {}) });
 });
 
 if (require.main === module) {

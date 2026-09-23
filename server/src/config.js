@@ -10,6 +10,7 @@ const config = {
   jwtSecret: process.env.JWT_SECRET,
   anthropicApiKey: process.env.ANTHROPIC_API_KEY,
   anthropicModel: process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-6',
+  aiTimeoutMs: Number(process.env.AI_TIMEOUT_MS || 90000),
   convertKitApiKey: process.env.CONVERTKIT_API_KEY,
   convertKitTagId: process.env.CONVERTKIT_TAG_ID,
   frontendOrigin: process.env.FRONTEND_ORIGIN || 'http://localhost:3000'
@@ -25,6 +26,9 @@ function validateConfig({ requireAi = false } = {}) {
   if (missing.length) throw new Error(`Missing environment variables: ${missing.map(([, name]) => name).join(', ')}`);
   if (!Number.isInteger(config.port) || config.port < 1 || config.port > 65535) {
     throw new Error('PORT must be a valid TCP port');
+  }
+  if (!Number.isInteger(config.aiTimeoutMs) || config.aiTimeoutMs < 1000 || config.aiTimeoutMs > 120000) {
+    throw new Error('AI_TIMEOUT_MS must be between 1000 and 120000 milliseconds');
   }
 }
 
