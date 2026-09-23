@@ -13,7 +13,7 @@ const config = {
   aiTimeoutMs: Number(process.env.AI_TIMEOUT_MS || 90000),
   invitationExpiryDays: Number(process.env.INVITATION_EXPIRY_DAYS || 7),
   publicAppUrl: process.env.PUBLIC_APP_URL || 'http://localhost:3000',
-  adminApiKey: process.env.ADMIN_API_KEY,
+  adminEmails: String(process.env.ADMIN_EMAILS || '').split(',').map((email) => email.trim().toLowerCase()).filter(Boolean),
   resendApiKey: process.env.RESEND_API_KEY,
   emailFrom: process.env.EMAIL_FROM,
   convertKitApiKey: process.env.CONVERTKIT_API_KEY,

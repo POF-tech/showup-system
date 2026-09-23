@@ -1,6 +1,7 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const config = require('./config');
+const { getDb } = require('./db');
 
 function assertJwtConfigured() {
   if (!config.jwtSecret) throw new Error('JWT_SECRET is not configured');
@@ -31,4 +32,13 @@ function requireAuth(req, res, next) {
   }
 }
 
-module.exports = { hashPassword, verifyPassword, createToken, requireAuth };
+async function requireAdmin(req, res, next) {
+  try {
+    const user = await (await getDb()).collection('users').findOne({ _id: new (require('mongodb').ObjectId)(req.auth.sub) }, { projection: { role: 1, email: 1 } });
+    if (!user || user.role !== 'ADMIN') return res.status(403).json({ success: false, error: 'Admin access required' });
+    req.adminUser = user;
+    next();
+  } catch (error) { next(error); }
+}
+
+module.exports = { hashPassword, verifyPassword, createToken, requireAuth, requireAdmin };

@@ -37,7 +37,7 @@ ConvertKit remains optional and continues to use `CONVERTKIT_API_KEY` and `CONVE
 
 ## Deliberately deferred
 
-Phase 4 admin UI, Skool integration, payments, membership synchronization, and any Growth Academy application were not implemented.
+Skool integration, payments, membership synchronization, and any Growth Academy application remain outside this project. The Phase 4 admin UI is implemented separately.
 
 ## Database safety
 

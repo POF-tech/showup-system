@@ -35,3 +35,5 @@ Phase 3 adds hashed, expiring invitations and server-side `GROWTH_ACADEMY` entit
 - `GET /api/invitations/validate?token=...`
 - `POST /api/auth/invitation-register`
 - `POST /api/auth/claim-invitation`
+
+Set `ADMIN_EMAILS` to a comma-separated list of administrator emails. On successful login, those configured accounts receive the server-side `ADMIN` role. Admin dashboard requests then require the normal bearer token plus that database role.

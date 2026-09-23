@@ -30,4 +30,10 @@ export const api = {
   saveCalendar: (token, payload) => request('/calendar/save', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(payload) }),
   calendars: (token) => request('/calendars', { headers: { Authorization: `Bearer ${token}` } }),
   calendar: (token, id) => request(`/calendar/${id}`, { headers: { Authorization: `Bearer ${token}` } }),
+  adminMembers: (token, params = {}) => request(`/admin/invitations/members?${new URLSearchParams(params)}`, { headers: { Authorization: `Bearer ${token}` } }),
+  adminMember: (token, id) => request(`/admin/invitations/members/${id}`, { headers: { Authorization: `Bearer ${token}` } }),
+  adminInvite: (token, payload) => request('/admin/invitations', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(payload) }),
+  adminResend: (token, id) => request(`/admin/invitations/${id}/resend`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } }),
+  adminRevoke: (token, id) => request(`/admin/invitations/members/${id}/revoke`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } }),
+  adminRestore: (token, id) => request(`/admin/invitations/members/${id}/restore`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } }),
 };

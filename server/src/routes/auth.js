@@ -5,9 +5,10 @@ const { hashPassword, verifyPassword, createToken, requireAuth } = require('../a
 const { subscribeUser } = require('../services/convertKit');
 const { findValidInvitation, redeemInvitation } = require('../services/invitations');
 const { grantGrowthAccess } = require('../services/entitlements');
+const config = require('../config');
 
 const router = express.Router();
-const publicUser = (user) => ({ email: user.email, name: user.name, plan: user.plan, usage_count: user.usageCount });
+const publicUser = (user) => ({ email: user.email, name: user.name, plan: user.plan, role: user.role || 'USER', usage_count: user.usageCount });
 
 router.post('/signup', async (req, res, next) => {
   const { name = '', email, password } = req.body || {};
@@ -28,8 +29,14 @@ router.post('/login', async (req, res, next) => {
   const { email, password } = req.body || {};
   if (!email || !password) return res.status(400).json({ success: false, error: 'Missing email or password' });
   try {
-    const user = await (await getDb()).collection('users').findOne({ email: email.trim().toLowerCase() });
+    const normalizedEmail = email.trim().toLowerCase();
+    const db = await getDb();
+    const user = await db.collection('users').findOne({ email: normalizedEmail });
     if (!user || !(await verifyPassword(password, user.password))) return res.status(401).json({ success: false, error: 'Invalid credentials' });
+    if (config.adminEmails.includes(normalizedEmail) && user.role !== 'ADMIN') {
+      user.role = 'ADMIN';
+      await db.collection('users').updateOne({ _id: user._id }, { $set: { role: 'ADMIN', updatedAt: new Date() } });
+    }
     return res.json({ success: true, token: createToken(user), ...publicUser(user) });
   } catch (error) { next(error); }
 });
