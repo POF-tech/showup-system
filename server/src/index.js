@@ -4,6 +4,8 @@ const config = require('./config');
 const authRoutes = require('./routes/auth');
 const calendarRoutes = require('./routes/calendars');
 const generateRoutes = require('./routes/generate');
+const invitationRoutes = require('./routes/invitations');
+const adminInvitationRoutes = require('./routes/adminInvitations');
 const { getDb, closeDb, isDatabaseConnectionError } = require('./db');
 const logger = require('./logger');
 
@@ -36,6 +38,8 @@ app.get('/health', async (req, res) => {
   }
 });
 app.use('/api/auth', authRoutes);
+app.use('/api/invitations', invitationRoutes);
+app.use('/api/admin/invitations', adminInvitationRoutes);
 app.use('/api/calendars', calendarRoutes);
 app.use('/api/calendar', calendarRoutes);
 app.use('/api/generate', generateRoutes);

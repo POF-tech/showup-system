@@ -24,7 +24,10 @@ async function getDb() {
       const nextDatabase = nextClient.db(config.mongoDb);
       await Promise.all([
         nextDatabase.collection('users').createIndex({ email: 1 }, { unique: true }),
-        nextDatabase.collection('calendars').createIndex({ userId: 1, createdAt: -1 })
+        nextDatabase.collection('calendars').createIndex({ userId: 1, createdAt: -1 }),
+        nextDatabase.collection('invitations').createIndex({ tokenHash: 1 }, { unique: true }),
+        nextDatabase.collection('invitations').createIndex({ email: 1, status: 1 }),
+        nextDatabase.collection('entitlements').createIndex({ userId: 1, type: 1 }, { unique: true })
       ]);
       client = nextClient;
       database = nextDatabase;

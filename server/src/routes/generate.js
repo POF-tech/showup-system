@@ -4,6 +4,7 @@ const { getDb } = require('../db');
 const { requireAuth } = require('../auth');
 const { generateJson } = require('../services/ai');
 const logger = require('../logger');
+const { hasActiveGrowthAccess } = require('../services/entitlements');
 
 const router = express.Router();
 router.post('/', requireAuth, async (req, res, next) => {
@@ -32,11 +33,17 @@ router.post('/', requireAuth, async (req, res, next) => {
     phase = 'database.user_lookup';
     const user = await db.collection('users').findOne({ _id: new ObjectId(req.auth.sub) });
     if (!user) return res.status(401).json({ success: false, error: 'User not found' });
-    if (user.plan === 'free' && user.usageCount >= 25) return res.status(403).json({ success: false, error: 'Upgrade required to continue' });
+    const isCalendarGeneration = body.stage === 'calendar';
+    const unlimited = user.plan === 'premium' || await hasActiveGrowthAccess(user._id);
+    if (isCalendarGeneration && !unlimited) {
+      const calendarCount = user.calendarCount || await db.collection('calendars').countDocuments({ userId: user._id });
+      if (calendarCount >= 1) return res.status(403).json({ success: false, error: 'Your free calendar has already been used.' });
+    }
+    if (!isCalendarGeneration && !unlimited && user.plan === 'free' && user.usageCount >= 25) return res.status(403).json({ success: false, error: 'Usage limit reached' });
     phase = 'ai.generate';
     const result = await generateJson(prompt, body.max_tokens || 1500);
     phase = 'database.usage_update';
-    await db.collection('users').updateOne({ _id: user._id }, { $inc: { usageCount: 1 } });
+    await db.collection('users').updateOne({ _id: user._id }, { $inc: { usageCount: 1, ...(isCalendarGeneration ? { calendarCount: 1 } : {}) } });
     return res.json(result);
   } catch (error) {
     logger.error('generate.request.failure', { requestId: req.requestId, phase, errorName: error.name, errorMessage: error.message, statusCode: error.statusCode || 500 });

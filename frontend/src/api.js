@@ -20,6 +20,8 @@ async function request(path, options = {}) {
 export const api = {
   signup: (payload) => request('/auth/signup', { method: 'POST', body: JSON.stringify(payload) }),
   login: (payload) => request('/auth/login', { method: 'POST', body: JSON.stringify(payload) }),
+  validateInvitation: (token) => request(`/invitations/validate?token=${encodeURIComponent(token)}`),
+  registerInvitation: (payload) => request('/auth/invitation-register', { method: 'POST', body: JSON.stringify(payload) }),
   me: (token) => request('/auth/me', { headers: { Authorization: `Bearer ${token}` } }),
   generate: (token, payload) => {
     if (!payload?.prompt?.trim()) throw new Error('Generation prompt is empty. Please complete the form and try again.');

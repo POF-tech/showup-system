@@ -1,4 +1,5 @@
 const config = require('../config');
+const logger = require('../logger');
 
 async function subscribeUser(email, name) {
   if (!config.convertKitApiKey || !config.convertKitTagId) return;
@@ -10,4 +11,20 @@ async function subscribeUser(email, name) {
   if (!response.ok) throw new Error(`ConvertKit returned ${response.status}`);
 }
 
-module.exports = { subscribeUser };
+async function sendInvitationEmail({ email, name, invitationUrl, expiresAt }) {
+  if (config.convertKitApiKey && config.convertKitTagId) await subscribeUser(email, name);
+  if (!config.resendApiKey || !config.emailFrom) {
+    logger.warn('invitation.email.not_configured', { emailDomain: email.split('@')[1] });
+    return false;
+  }
+  const response = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${config.resendApiKey}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ from: config.emailFrom, to: [email], subject: 'Your ShowUpp access is ready', html: `<p>${name ? `Hi ${name},` : 'Hi,'}</p><p>Your ShowUpp System access is ready.</p><p><a href="${invitationUrl}">Create your account</a></p><p>This invitation expires on ${new Date(expiresAt).toLocaleDateString()}.</p>` })
+  });
+  if (!response.ok) throw new Error(`Invitation email provider returned ${response.status}`);
+  logger.info('invitation.email.sent', { emailDomain: email.split('@')[1] });
+  return true;
+}
+
+module.exports = { subscribeUser, sendInvitationEmail };

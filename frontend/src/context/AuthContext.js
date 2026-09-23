@@ -16,9 +16,10 @@ export function AuthProvider({ children }) {
 
   const login = async (credentials) => { const result = await api.login(credentials); localStorage.setItem('showup_token', result.token); setToken(result.token); setUser(result); };
   const signup = async (details) => { await api.signup(details); await login({ email: details.email, password: details.password }); };
+  const registerInvitation = async (details) => { const result = await api.registerInvitation(details); if (result.existingAccount) throw new Error(result.message); localStorage.setItem('showup_token', result.token); setToken(result.token); setUser(result); };
   const logout = () => { localStorage.removeItem('showup_token'); setToken(null); setUser(null); };
 
-  return <AuthContext.Provider value={{ token, user, loading, login, signup, logout }}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{ token, user, loading, login, signup, registerInvitation, logout }}>{children}</AuthContext.Provider>;
 }
 
 export const useAuth = () => useContext(AuthContext);
