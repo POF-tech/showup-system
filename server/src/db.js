@@ -6,6 +6,10 @@ let client;
 let database;
 let connectionPromise;
 
+function isDatabaseConnectionError(error) {
+  return ['MongoServerSelectionError', 'MongoNetworkError', 'MongoParseError'].includes(error?.name);
+}
+
 async function getDb() {
   if (database) return database;
   if (connectionPromise) return connectionPromise;
@@ -46,4 +50,4 @@ async function closeDb() {
   logger.info('database.connection.closed');
 }
 
-module.exports = { getDb, closeDb };
+module.exports = { getDb, closeDb, isDatabaseConnectionError };

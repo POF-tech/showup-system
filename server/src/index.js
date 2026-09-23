@@ -4,7 +4,7 @@ const config = require('./config');
 const authRoutes = require('./routes/auth');
 const calendarRoutes = require('./routes/calendars');
 const generateRoutes = require('./routes/generate');
-const { getDb, closeDb } = require('./db');
+const { getDb, closeDb, isDatabaseConnectionError } = require('./db');
 const logger = require('./logger');
 
 const app = express();
@@ -43,9 +43,10 @@ app.use('/', generateRoutes);
 app.use((req, res) => res.status(404).json({ success: false, error: 'Endpoint not found', requestId: req.requestId }));
 app.use((error, req, res, next) => {
   logger.error('http.request.failure', { requestId: req.requestId, method: req.method, path: req.path, err: error });
-  const statusCode = Number.isInteger(error.statusCode) ? error.statusCode : 500;
+  const databaseUnavailable = isDatabaseConnectionError(error);
+  const statusCode = databaseUnavailable ? 503 : (Number.isInteger(error.statusCode) ? error.statusCode : 500);
   const safeMessage = statusCode >= 500 && statusCode < 600 && process.env.NODE_ENV === 'production'
-    ? (error.statusCode ? error.message : 'Server error')
+    ? (databaseUnavailable ? 'Database unavailable. Check the server database connection.' : (error.statusCode ? error.message : 'Server error'))
     : (error.message || 'Server error');
   res.status(statusCode).json({ success: false, error: safeMessage, requestId: req.requestId, ...(error.providerRequestId ? { providerRequestId: error.providerRequestId } : {}) });
 });
