@@ -15,7 +15,7 @@ router.post('/', async (req, res, next) => {
     const existing = await (await getDb()).collection('users').findOne({ email: normalizedEmail }, { projection: { _id: 1 } });
     if (existing && await hasActiveGrowthAccess(existing._id)) return res.status(409).json({ success: false, error: 'This user already has active Growth Academy access.' });
     const result = await createInvitation(email, name);
-    return res.status(201).json({ success: true, invitation: publicInvitation(result.invitation), invitationUrl: result.invitationUrl, emailSent: result.emailSent });
+    return res.status(201).json({ success: true, invitation: publicInvitation(result.invitation), invitationUrl: result.invitationUrl, emailSent: result.emailSent, emailError: result.emailError });
   } catch (error) { next(error); }
 });
 
@@ -33,7 +33,7 @@ router.post('/:id/resend', async (req, res, next) => {
     if (!current) return res.status(404).json({ success: false, error: 'Invitation not found' });
     if (current.status === INVITATION_STATUSES.REDEEMED) return res.status(409).json({ success: false, error: 'Invitation has already been redeemed' });
     const result = await createInvitation(current.email, current.name || '');
-    return res.json({ success: true, invitation: publicInvitation(result.invitation), invitationUrl: result.invitationUrl, emailSent: result.emailSent });
+    return res.json({ success: true, invitation: publicInvitation(result.invitation), invitationUrl: result.invitationUrl, emailSent: result.emailSent, emailError: result.emailError });
   } catch (error) { next(error); }
 });
 

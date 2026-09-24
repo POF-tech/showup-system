@@ -25,8 +25,12 @@ async function createInvitation(email, name = '') {
     invitation.id = result.insertedId;
   }
   const invitationUrl = `${config.publicAppUrl.replace(/\/$/, '')}/register?token=${encodeURIComponent(rawToken)}`;
-  const emailSent = await sendInvitationEmail({ email: normalizedEmail, name, invitationUrl, expiresAt: invitation.expiresAt });
-  return { invitation, invitationUrl, emailSent };
+  try {
+    const emailSent = await sendInvitationEmail({ email: normalizedEmail, name, invitationUrl, expiresAt: invitation.expiresAt });
+    return { invitation, invitationUrl, emailSent, emailError: null };
+  } catch (error) {
+    return { invitation, invitationUrl, emailSent: false, emailError: error.message };
+  }
 }
 
 async function findValidInvitation(token) {
