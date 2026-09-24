@@ -66,7 +66,7 @@ router.get('/members', async (req, res, next) => {
     ]);
     const entitlementByUser = new Map(entitlements.map((item) => [item.userId.toString(), item]));
     const invitationByEmail = new Map(invitations.map((item) => [item.email, item]));
-    const members = users.map((user) => ({ id: user._id.toString(), name: user.name, email: user.email, accountCreatedAt: user.createdAt, invitation: invitationByEmail.get(user.email) ? publicInvitation(invitationByEmail.get(user.email)) : null, access: entitlementByUser.get(user._id.toString())?.status || 'NONE', accessGrantedAt: entitlementByUser.get(user._id.toString())?.createdAt || null, updatedAt: entitlementByUser.get(user._id.toString())?.updatedAt || user.updatedAt || user.createdAt })).concat(invitations.filter((invitation) => !users.some((user) => user.email === invitation.email)).map((invitation) => ({ id: `invitation-${invitation._id.toString()}`, name: invitation.name || '', email: invitation.email, accountCreatedAt: null, invitation: publicInvitation(invitation), access: 'NONE', accessGrantedAt: null, updatedAt: invitation.createdAt }))).filter((member) => status === 'ALL' || member.access === status || member.invitation?.status === status);
+    const members = users.map((user) => ({ id: user._id.toString(), name: user.name, email: user.email, plan: user.plan || 'free', role: user.role || 'USER', accountStatus: user.accountStatus || 'ACTIVE', accountCreatedAt: user.createdAt, invitation: invitationByEmail.get(user.email) ? publicInvitation(invitationByEmail.get(user.email)) : null, access: entitlementByUser.get(user._id.toString())?.status || 'NONE', accessGrantedAt: entitlementByUser.get(user._id.toString())?.createdAt || null, updatedAt: entitlementByUser.get(user._id.toString())?.updatedAt || user.updatedAt || user.createdAt })).concat(invitations.filter((invitation) => !users.some((user) => user.email === invitation.email)).map((invitation) => ({ id: `invitation-${invitation._id.toString()}`, name: invitation.name || '', email: invitation.email, plan: 'free', role: 'USER', accountStatus: 'PENDING', accountCreatedAt: null, invitation: publicInvitation(invitation), access: 'NONE', accessGrantedAt: null, updatedAt: invitation.createdAt }))).filter((member) => status === 'ALL' || member.access === status || member.invitation?.status === status || member.accountStatus === status);
     const pending = await db.collection('invitations').countDocuments({ status: 'PENDING' });
     const expired = await db.collection('invitations').countDocuments({ status: 'EXPIRED' });
     const revoked = await db.collection('entitlements').countDocuments({ type: 'GROWTH_ACADEMY', status: 'REVOKED' });
@@ -82,7 +82,28 @@ router.get('/members/:id', async (req, res, next) => {
     const user = await db.collection('users').findOne({ _id: new ObjectId(req.params.id) }, { projection: { password: 0 } });
     if (!user) return res.status(404).json({ success: false, error: 'Member not found' });
     const [entitlement, invitation] = await Promise.all([db.collection('entitlements').findOne({ userId: user._id, type: 'GROWTH_ACADEMY' }), db.collection('invitations').findOne({ email: user.email }, { sort: { createdAt: -1 } })]);
-    return res.json({ success: true, member: { id: user._id.toString(), name: user.name, email: user.email, accountCreatedAt: user.createdAt, access: entitlement?.status || 'NONE', accessGrantedAt: entitlement?.createdAt || null, accessRevokedAt: entitlement?.revokedAt || null, invitation: invitation ? publicInvitation(invitation) : null } });
+    return res.json({ success: true, member: { id: user._id.toString(), name: user.name, email: user.email, plan: user.plan || 'free', role: user.role || 'USER', accountStatus: user.accountStatus || 'ACTIVE', accountCreatedAt: user.createdAt, access: entitlement?.status || 'NONE', accessGrantedAt: entitlement?.createdAt || null, accessRevokedAt: entitlement?.revokedAt || null, invitation: invitation ? publicInvitation(invitation) : null } });
+  } catch (error) { next(error); }
+});
+
+router.patch('/members/:id', async (req, res, next) => {
+  try {
+    const updates = {};
+    if (req.body?.plan !== undefined) {
+      if (!['free', 'premium'].includes(req.body.plan)) return res.status(400).json({ success: false, error: 'Plan must be free or premium' });
+      updates.plan = req.body.plan;
+    }
+    if (req.body?.accountStatus !== undefined) {
+      if (!['ACTIVE', 'DEACTIVATED'].includes(req.body.accountStatus)) return res.status(400).json({ success: false, error: 'Account status must be ACTIVE or DEACTIVATED' });
+      if (req.params.id === req.adminUser._id.toString() && req.body.accountStatus === 'DEACTIVATED') return res.status(400).json({ success: false, error: 'You cannot deactivate your own admin account' });
+      updates.accountStatus = req.body.accountStatus;
+    }
+    if (!Object.keys(updates).length) return res.status(400).json({ success: false, error: 'No account changes supplied' });
+    updates.updatedAt = new Date();
+    const result = await (await getDb()).collection('users').findOneAndUpdate({ _id: new ObjectId(req.params.id) }, { $set: updates }, { projection: { password: 0 }, returnDocument: 'after' });
+    const user = result.value || result;
+    if (!user) return res.status(404).json({ success: false, error: 'Member not found' });
+    return res.json({ success: true, member: { id: user._id.toString(), email: user.email, name: user.name, plan: user.plan, accountStatus: user.accountStatus || 'ACTIVE', role: user.role || 'USER' } });
   } catch (error) { next(error); }
 });
 
@@ -99,6 +120,20 @@ router.post('/members/:id/restore', async (req, res, next) => {
   try {
     await grantGrowthAccess(new ObjectId(req.params.id), 'admin');
     return res.json({ success: true, access: 'ACTIVE' });
+  } catch (error) { next(error); }
+});
+
+router.post('/:id/status', async (req, res, next) => {
+  try {
+    const allowed = Object.values(INVITATION_STATUSES);
+    if (!allowed.includes(req.body?.status)) return res.status(400).json({ success: false, error: `Status must be one of: ${allowed.join(', ')}` });
+    const update = { status: req.body.status, updatedAt: new Date() };
+    if (req.body.status === INVITATION_STATUSES.REVOKED) update.revokedAt = new Date();
+    if (req.body.status === INVITATION_STATUSES.EXPIRED) update.expiredAt = new Date();
+    const result = await (await getDb()).collection('invitations').findOneAndUpdate({ _id: new ObjectId(req.params.id) }, { $set: update }, { returnDocument: 'after' });
+    const invitation = result.value || result;
+    if (!invitation) return res.status(404).json({ success: false, error: 'Invitation not found' });
+    return res.json({ success: true, invitation: publicInvitation(invitation) });
   } catch (error) { next(error); }
 });
 

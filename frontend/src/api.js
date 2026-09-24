@@ -32,8 +32,10 @@ export const api = {
   calendar: (token, id) => request(`/calendar/${id}`, { headers: { Authorization: `Bearer ${token}` } }),
   adminMembers: (token, params = {}) => request(`/admin/invitations/members?${new URLSearchParams(params)}`, { headers: { Authorization: `Bearer ${token}` } }),
   adminMember: (token, id) => request(`/admin/invitations/members/${id}`, { headers: { Authorization: `Bearer ${token}` } }),
+  adminUpdateMember: (token, id, payload) => request(`/admin/invitations/members/${id}`, { method: 'PATCH', headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(payload) }),
   adminInvite: (token, payload) => request('/admin/invitations', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(payload) }),
   adminResend: (token, id) => request(`/admin/invitations/${id}/resend`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } }),
   adminRevoke: (token, id) => request(`/admin/invitations/members/${id}/revoke`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } }),
   adminRestore: (token, id) => request(`/admin/invitations/members/${id}/restore`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } }),
+  adminInvitationStatus: (token, id, status) => request(`/admin/invitations/${id}/status`, { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify({ status }) }),
 };

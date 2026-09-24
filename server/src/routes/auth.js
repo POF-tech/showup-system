@@ -8,7 +8,7 @@ const { grantGrowthAccess } = require('../services/entitlements');
 const config = require('../config');
 
 const router = express.Router();
-const publicUser = (user) => ({ email: user.email, name: user.name, plan: user.plan, role: user.role || 'USER', usage_count: user.usageCount });
+const publicUser = (user) => ({ email: user.email, name: user.name, plan: user.plan, role: user.role || 'USER', accountStatus: user.accountStatus || 'ACTIVE', usage_count: user.usageCount });
 
 router.post('/signup', async (req, res, next) => {
   const { name = '', email, password } = req.body || {};
@@ -33,6 +33,7 @@ router.post('/login', async (req, res, next) => {
     const db = await getDb();
     const user = await db.collection('users').findOne({ email: normalizedEmail });
     if (!user || !(await verifyPassword(password, user.password))) return res.status(401).json({ success: false, error: 'Invalid credentials' });
+    if (user.accountStatus === 'DEACTIVATED') return res.status(403).json({ success: false, error: 'This account is deactivated. Contact support.' });
     if (config.adminEmails.includes(normalizedEmail) && user.role !== 'ADMIN') {
       user.role = 'ADMIN';
       await db.collection('users').updateOne({ _id: user._id }, { $set: { role: 'ADMIN', updatedAt: new Date() } });
@@ -89,6 +90,7 @@ router.get('/me', requireAuth, async (req, res, next) => {
   try {
     const user = await (await getDb()).collection('users').findOne({ _id: new ObjectId(req.auth.sub) });
     if (!user) return res.status(404).json({ success: false, error: 'User not found' });
+    if (user.accountStatus === 'DEACTIVATED') return res.status(403).json({ success: false, error: 'This account is deactivated. Contact support.' });
     return res.json({ success: true, ...publicUser(user) });
   } catch (error) { next(error); }
 });

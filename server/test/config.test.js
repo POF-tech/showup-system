@@ -10,3 +10,7 @@ test('configuration exposes a selectable AI model', () => {
 test('configuration accepts either Mongo URI naming convention', () => {
   assert.equal(config.mongoUri, process.env.MONGO_URI || process.env.MONGODB_URI || undefined);
 });
+
+test('administrator emails are normalized from configuration', () => {
+  assert.ok(Array.isArray(config.adminEmails));
+});

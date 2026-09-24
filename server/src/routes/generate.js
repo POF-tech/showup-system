@@ -33,6 +33,7 @@ router.post('/', requireAuth, async (req, res, next) => {
     phase = 'database.user_lookup';
     const user = await db.collection('users').findOne({ _id: new ObjectId(req.auth.sub) });
     if (!user) return res.status(401).json({ success: false, error: 'User not found' });
+    if (user.accountStatus === 'DEACTIVATED') return res.status(403).json({ success: false, error: 'This account is deactivated.' });
     const isCalendarGeneration = body.stage === 'calendar';
     const unlimited = user.plan === 'premium' || await hasActiveGrowthAccess(user._id);
     if (isCalendarGeneration && !unlimited) {
