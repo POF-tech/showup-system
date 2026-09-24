@@ -5,8 +5,8 @@ async function request(path, options = {}) {
   const requestHeaders = { 'Content-Type': 'application/json', ...(options.headers || {}) };
   if (process.env.NODE_ENV !== 'production') console.debug('[Show Up API] request', { url, method: options.method || 'GET', hasBody: Boolean(options.body), bodyLength: options.body?.length || 0 });
   const response = await fetch(url, {
-    headers: requestHeaders,
     ...options,
+    headers: requestHeaders,
   });
   const body = await response.json().catch(() => ({}));
   if (!response.ok) {
