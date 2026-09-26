@@ -7,13 +7,26 @@ const logger = require('../logger');
 const { hasActiveGrowthAccess } = require('../services/entitlements');
 
 const router = express.Router();
+const MAX_CALENDAR_PARTS = 6;
+
+// A calendar is generated as several smaller prompts in parallel so a full month fits within token and time limits.
+async function generateCalendarParts(prompts, maxTokens, generate = generateJson) {
+  const results = await Promise.allSettled(prompts.map((item) => generate(item, maxTokens)));
+  const fulfilled = results.filter((result) => result.status === 'fulfilled');
+  if (!fulfilled.length) throw results[0].reason;
+  const posts = fulfilled.flatMap((result) => (Array.isArray(result.value?.posts) ? result.value.posts : []));
+  return { posts, failedParts: results.length - fulfilled.length };
+}
 router.post('/', requireAuth, async (req, res, next) => {
   let parsedBody = req.body;
   if (typeof parsedBody === 'string') {
     try { parsedBody = JSON.parse(parsedBody); } catch { parsedBody = {}; }
   }
   const body = parsedBody && typeof parsedBody === 'object' ? parsedBody : {};
-  const prompt = typeof body.prompt === 'string' ? body.prompt.trim() : '';
+  const partPrompts = body.stage === 'calendar' && Array.isArray(body.prompts)
+    ? body.prompts.filter((item) => typeof item === 'string' && item.trim()).map((item) => item.trim()).slice(0, MAX_CALENDAR_PARTS)
+    : [];
+  const prompt = partPrompts.length ? partPrompts[0] : (typeof body.prompt === 'string' ? body.prompt.trim() : '');
   logger.debug('generate.request.received', {
     requestId: req.requestId,
     contentType: req.get('content-type'),
@@ -42,7 +55,8 @@ router.post('/', requireAuth, async (req, res, next) => {
     }
     if (!isCalendarGeneration && !unlimited && user.plan === 'free' && user.usageCount >= 25) return res.status(403).json({ success: false, error: 'Usage limit reached' });
     phase = 'ai.generate';
-    const result = await generateJson(prompt, body.max_tokens || 1500);
+    const maxTokens = Math.min(Number(body.max_tokens) || 1500, 8000);
+    const result = partPrompts.length ? await generateCalendarParts(partPrompts, maxTokens) : await generateJson(prompt, maxTokens);
     phase = 'database.usage_update';
     await db.collection('users').updateOne({ _id: user._id }, { $inc: { usageCount: 1, ...(isCalendarGeneration ? { calendarCount: 1 } : {}) } });
     return res.json(result);
@@ -52,3 +66,4 @@ router.post('/', requireAuth, async (req, res, next) => {
   }
 });
 module.exports = router;
+module.exports.generateCalendarParts = generateCalendarParts;

@@ -11,12 +11,12 @@ router.post('/save', async (req, res, next) => {
   if (typeof body === 'string') {
     try { body = JSON.parse(body); } catch { body = {}; }
   }
-  const { name, data } = body || {};
+  const { name, data, month } = body || {};
   if (typeof name !== 'string' || !name.trim() || !Array.isArray(data) || data.length === 0) {
     return res.status(400).json({ success: false, error: 'Calendar name and at least one calendar post are required', requestId: req.requestId });
   }
   try {
-    const calendar = { userId: new ObjectId(req.auth.sub), name, data, createdAt: new Date() };
+    const calendar = { userId: new ObjectId(req.auth.sub), name, data, ...(typeof month === 'string' && /^\d{4}-\d{2}$/.test(month) ? { month } : {}), createdAt: new Date() };
     const result = await (await getDb()).collection('calendars').insertOne(calendar);
     return res.json({ success: true, id: result.insertedId.toString(), message: 'Calendar saved successfully' });
   } catch (error) { next(error); }
@@ -25,7 +25,7 @@ router.post('/save', async (req, res, next) => {
 router.get('/', async (req, res, next) => {
   try {
     const calendars = await (await getDb()).collection('calendars').find({ userId: new ObjectId(req.auth.sub) }).sort({ createdAt: -1 }).toArray();
-    return res.json({ success: true, calendars: calendars.map(({ _id, name, data, createdAt }) => ({ id: _id.toString(), name, data, created_at: createdAt })) });
+    return res.json({ success: true, calendars: calendars.map(({ _id, name, data, month, createdAt }) => ({ id: _id.toString(), name, data, month, created_at: createdAt })) });
   } catch (error) { next(error); }
 });
 

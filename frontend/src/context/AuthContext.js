@@ -15,7 +15,7 @@ export function AuthProvider({ children }) {
   }, [token]);
 
   const login = async (credentials) => { const result = await api.login(credentials); localStorage.setItem('showup_token', result.token); setToken(result.token); setUser(result); };
-  const signup = async (details) => { await api.signup(details); await login({ email: details.email, password: details.password }); };
+  const signup = async (details) => { const result = await api.signup(details); if (!result.token) return login({ email: details.email, password: details.password }); localStorage.setItem('showup_token', result.token); setToken(result.token); setUser(result); };
   const registerInvitation = async (details) => { const result = await api.registerInvitation(details); if (result.existingAccount) throw new Error(result.message); localStorage.setItem('showup_token', result.token); setToken(result.token); setUser(result); };
   const logout = () => { localStorage.removeItem('showup_token'); setToken(null); setUser(null); };
 

@@ -16,9 +16,11 @@ router.post('/signup', async (req, res, next) => {
   try {
     const db = await getDb();
     const user = { name, email: email.trim().toLowerCase(), password: await hashPassword(password), plan: 'free', usageCount: 0, calendarCount: 0, createdAt: new Date() };
-    await db.collection('users').insertOne(user);
+    const result = await db.collection('users').insertOne(user);
+    user._id = result.insertedId;
     subscribeUser(user.email, name).catch(() => {});
-    return res.status(201).json({ success: true, message: 'User created' });
+    // Return a session directly so the client does not need a second login round-trip (and a second bcrypt compare).
+    return res.status(201).json({ success: true, message: 'User created', token: createToken(user), ...publicUser(user) });
   } catch (error) {
     if (error.code === 11000) return res.status(400).json({ success: false, error: 'Email already exists' });
     next(error);

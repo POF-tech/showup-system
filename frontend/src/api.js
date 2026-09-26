@@ -18,6 +18,8 @@ async function request(path, options = {}) {
 }
 
 export const api = {
+  // Wakes the server and opens its database connection while the user is still typing, so signup/login respond quickly.
+  warmUp: () => fetch(`${API_URL.replace(/\/api\/?$/, '')}/health`).catch(() => {}),
   signup: (payload) => request('/auth/signup', { method: 'POST', body: JSON.stringify(payload) }),
   login: (payload) => request('/auth/login', { method: 'POST', body: JSON.stringify(payload) }),
   validateInvitation: (token) => request(`/invitations/validate?token=${encodeURIComponent(token)}`),
