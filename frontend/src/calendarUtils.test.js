@@ -16,7 +16,7 @@ test('schedules posts across the whole month, including important dates', () => 
 
 test('splits the calendar into chunked prompts', () => {
   const slots = buildSchedule({ ...form, frequency: '5' }, questions, []);
-  expect(calendarPrompts(form, slots, []).length).toBe(Math.ceil(slots.length / 8));
+  expect(calendarPrompts(form, slots, []).length).toBe(Math.ceil(slots.length / 6));
 });
 
 test('fills every slot even when the AI returns only some posts', () => {

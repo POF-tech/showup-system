@@ -26,7 +26,8 @@ export const api = {
   registerInvitation: (payload) => request('/auth/invitation-register', { method: 'POST', body: JSON.stringify(payload) }),
   me: (token) => request('/auth/me', { headers: { Authorization: `Bearer ${token}` } }),
   generate: (token, payload) => {
-    if (!payload?.prompt?.trim()) throw new Error('Generation prompt is empty. Please complete the form and try again.');
+    const hasPrompt = Boolean(payload?.prompt?.trim()) || (Array.isArray(payload?.prompts) && payload.prompts.some((item) => item?.trim()));
+    if (!hasPrompt) throw new Error('Generation prompt is empty. Please complete the form and try again.');
     return request('/generate', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(payload) });
   },
   saveCalendar: (token, payload) => request('/calendar/save', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(payload) }),

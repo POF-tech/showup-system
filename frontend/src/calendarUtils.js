@@ -3,7 +3,7 @@ export const PLATFORM_COLOURS = { Instagram: '#C2185B', LinkedIn: '#378ADD', Tik
 const DEFAULT_TYPES = { Instagram: 'Reel', LinkedIn: 'Text post', TikTok: 'Short video', YouTube: 'Short', Facebook: 'Post', Pinterest: 'Pin' };
 // Posting weekdays per weekly frequency (0 = Sunday, 1 = Monday ...).
 const POSTING_WEEKDAYS = { 3: [1, 3, 5], 4: [1, 2, 4, 5], 5: [1, 2, 3, 4, 5] };
-const CALENDAR_CHUNK_SIZE = 8;
+const CALENDAR_CHUNK_SIZE = 6;
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 export const slug = (value) => String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, '-');

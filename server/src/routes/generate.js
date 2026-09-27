@@ -7,7 +7,7 @@ const logger = require('../logger');
 const { hasActiveGrowthAccess } = require('../services/entitlements');
 
 const router = express.Router();
-const MAX_CALENDAR_PARTS = 6;
+const MAX_CALENDAR_PARTS = 8;
 
 // A calendar is generated as several smaller prompts in parallel so a full month fits within token and time limits.
 async function generateCalendarParts(prompts, maxTokens, generate = generateJson) {
